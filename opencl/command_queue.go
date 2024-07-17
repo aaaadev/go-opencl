@@ -3,7 +3,6 @@ package opencl
 // #include "opencl.h"
 import "C"
 import (
-	"errors"
 	"unsafe"
 )
 
@@ -50,8 +49,12 @@ func (c CommandQueue) EnqueueReadBuffer(buffer Buffer, blockingRead bool, dataPt
 	case []float32:
 		dataLen = uint64(len(p) * 4)
 		ptr = unsafe.Pointer(&p[0])
+	case []float64:
+		dataLen = uint64(len(p) * 8)
+		ptr = unsafe.Pointer(&p[0])
 	default:
-		return errors.New("Unexpected type for dataPtr")
+		dataLen = uint64(len(p) * 72)
+		ptr = unsafe.Pointer(&p[0])
 	}
 
 	errInt := clError(C.clEnqueueReadBuffer(c.commandQueue,
@@ -65,31 +68,35 @@ func (c CommandQueue) EnqueueReadBuffer(buffer Buffer, blockingRead bool, dataPt
 }
 
 func (c CommandQueue) EnqueueWriteBuffer(buffer Buffer, blockingRead bool, dataPtr interface{}) error {
-    var br C.cl_bool
-    if blockingRead {
-        br = C.CL_TRUE
-    } else {
-        br = C.CL_FALSE
-    }
+	var br C.cl_bool
+	if blockingRead {
+		br = C.CL_TRUE
+	} else {
+		br = C.CL_FALSE
+	}
 
-    var ptr unsafe.Pointer
-    var dataLen uint64
-    switch p := dataPtr.(type) {
-    case []float32:
-        dataLen = uint64(len(p) * 4)
-        ptr = unsafe.Pointer(&p[0])
-    default:
-        return errors.New("Unexpected type for dataPtr")
-    }
+	var ptr unsafe.Pointer
+	var dataLen uint64
+	switch p := dataPtr.(type) {
+	case []float32:
+		dataLen = uint64(len(p) * 4)
+		ptr = unsafe.Pointer(&p[0])
+	case []float64:
+		dataLen = uint64(len(p) * 8)
+		ptr = unsafe.Pointer(&p[0])
+	default:
+		dataLen = uint64(len(p) * 72)
+		ptr = unsafe.Pointer(&p[0])
+	}
 
-    errInt := clError(C.clEnqueueWriteBuffer(c.commandQueue,
-        buffer.buffer,
-        br,
-        0,
-        C.size_t(dataLen),
-        ptr,
-        0, nil, nil))
-    return clErrorToError(errInt)
+	errInt := clError(C.clEnqueueWriteBuffer(c.commandQueue,
+		buffer.buffer,
+		br,
+		0,
+		C.size_t(dataLen),
+		ptr,
+		0, nil, nil))
+	return clErrorToError(errInt)
 }
 
 func (c CommandQueue) Release() {
